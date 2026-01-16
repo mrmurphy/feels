@@ -82,11 +82,9 @@ export async function generateTestData() {
     await db.entries.clear();
 
     // Create test stats
-    const statIds = await Promise.all([
-      db.stats.add({ name: 'mood', color: DEFAULT_COLORS[0], order: 0 } as Stat),
-      db.stats.add({ name: 'energy', color: DEFAULT_COLORS[2], order: 1 } as Stat),
-      db.stats.add({ name: 'focus', color: DEFAULT_COLORS[4], order: 2 } as Stat),
-    ]);
+    const moodId = await db.stats.add({ name: 'mood', color: DEFAULT_COLORS[0], order: 0 } as Stat) as number;
+    const energyId = await db.stats.add({ name: 'energy', color: DEFAULT_COLORS[2], order: 1 } as Stat) as number;
+    const focusId = await db.stats.add({ name: 'focus', color: DEFAULT_COLORS[4], order: 2 } as Stat) as number;
 
     // Generate entries for the last 30 days
     const today = new Date();
@@ -101,7 +99,7 @@ export async function generateTestData() {
       // Mood: fluctuates between 4-8
       if (Math.random() > 0.2) {
         entries.push({
-          statId: statIds[0],
+          statId: moodId,
           value: Math.floor(4 + Math.random() * 5),
           date: dateStr,
         });
@@ -110,7 +108,7 @@ export async function generateTestData() {
       // Energy: generally lower, 3-7
       if (Math.random() > 0.3) {
         entries.push({
-          statId: statIds[1],
+          statId: energyId,
           value: Math.floor(3 + Math.random() * 5),
           date: dateStr,
         });
@@ -119,7 +117,7 @@ export async function generateTestData() {
       // Focus: varies more, 2-9
       if (Math.random() > 0.4) {
         entries.push({
-          statId: statIds[2],
+          statId: focusId,
           value: Math.floor(2 + Math.random() * 8),
           date: dateStr,
         });
@@ -128,7 +126,7 @@ export async function generateTestData() {
       // Sometimes add multiple entries per day for the same stat (recent days)
       if (i < 7 && Math.random() > 0.6) {
         entries.push({
-          statId: statIds[0],
+          statId: moodId,
           value: Math.floor(5 + Math.random() * 4),
           date: dateStr,
         });
