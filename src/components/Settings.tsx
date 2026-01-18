@@ -1,5 +1,6 @@
 import { useState, useRef } from 'react';
 import { db, getNextColor, exportData, importData, DEFAULT_COLORS, updateSettings } from '../db';
+import { GoogleSyncSection } from './GoogleSyncSection';
 import type { Stat, Settings as SettingsType } from '../types';
 
 interface SettingsProps {
@@ -198,6 +199,8 @@ export function Settings({ stats, settings }: SettingsProps) {
           </div>
         </div>
       </section>
+
+      <GoogleSyncSection settings={settings} />
 
       <section className="settings-section">
         <h2 className="settings-title">data</h2>

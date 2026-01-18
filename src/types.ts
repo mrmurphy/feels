@@ -22,6 +22,11 @@ export interface Settings {
   daysToShow: number;
   createdAt: Date;
   updatedAt: Date;
+  // Sync fields
+  syncEnabled?: boolean;
+  lastSyncTime?: string | null;
+  lastSyncChecksum?: string | null;
+  driveFileId?: string | null;
 }
 
 // For chart data

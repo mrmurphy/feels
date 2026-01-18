@@ -1071,3 +1071,246 @@ input:focus, button:focus {
   font-weight: 500;
   text-transform: lowercase;
 }
+
+/* ============================================
+   Google Sync Section
+   ============================================ */
+.sync-signin {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-md);
+}
+
+.sync-description {
+  font-size: 0.9rem;
+  color: var(--text-secondary);
+}
+
+.google-signin-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-sm);
+  padding: var(--space-md);
+  background: #4285f4;
+  color: white;
+  border-radius: 12px;
+  font-weight: 500;
+  transition: all var(--transition-fast);
+}
+
+.google-signin-btn:hover {
+  background: #357abd;
+}
+
+.google-signin-btn:disabled {
+  opacity: 0.6;
+}
+
+.sync-controls {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-md);
+}
+
+.sync-user {
+  display: flex;
+  align-items: center;
+  gap: var(--space-sm);
+  padding: var(--space-md);
+  background: var(--bg-card);
+  border-radius: 12px;
+  box-shadow: var(--shadow-sm);
+}
+
+.sync-user-avatar {
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+}
+
+.sync-user-email {
+  flex: 1;
+  font-size: 0.9rem;
+  color: var(--text-secondary);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.sync-signout {
+  font-size: 0.85rem;
+  color: var(--text-muted);
+  text-decoration: underline;
+  text-underline-offset: 2px;
+}
+
+.sync-signout:hover {
+  color: var(--text-secondary);
+}
+
+.sync-toggle {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: var(--space-md);
+  background: var(--bg-card);
+  border-radius: 12px;
+  box-shadow: var(--shadow-sm);
+}
+
+.sync-toggle input[type="checkbox"] {
+  width: 20px;
+  height: 20px;
+  accent-color: var(--accent-primary);
+}
+
+.sync-now-btn {
+  padding: var(--space-md);
+  background: var(--accent-primary);
+  color: white;
+  border-radius: 12px;
+  font-weight: 500;
+  transition: all var(--transition-fast);
+}
+
+.sync-now-btn:active {
+  transform: scale(0.98);
+}
+
+.sync-now-btn:disabled {
+  opacity: 0.6;
+}
+
+.sync-last-time {
+  font-size: 0.85rem;
+  color: var(--text-muted);
+  text-align: center;
+}
+
+.sync-message {
+  padding: var(--space-sm) var(--space-md);
+  border-radius: 8px;
+  font-size: 0.9rem;
+  text-align: center;
+}
+
+.sync-message.success {
+  background: color-mix(in srgb, var(--accent-secondary) 15%, transparent);
+  color: var(--accent-secondary);
+}
+
+.sync-message.error {
+  background: color-mix(in srgb, #c45c4a 15%, transparent);
+  color: #c45c4a;
+}
+
+/* ============================================
+   Conflict Dialog
+   ============================================ */
+.conflict-modal {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.6);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: var(--space-lg);
+  z-index: 100;
+  animation: fadeIn var(--transition-base) ease;
+}
+
+.conflict-content {
+  width: 100%;
+  max-width: 400px;
+  padding: var(--space-lg);
+  background: var(--bg-card);
+  border-radius: 16px;
+  box-shadow: var(--shadow-lg);
+  animation: slideUp var(--transition-base) ease;
+}
+
+.conflict-title {
+  font-family: var(--font-display);
+  font-size: 1.5rem;
+  font-weight: 400;
+  margin-bottom: var(--space-sm);
+}
+
+.conflict-description {
+  color: var(--text-secondary);
+  font-size: 0.9rem;
+  margin-bottom: var(--space-lg);
+}
+
+.conflict-comparison {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: var(--space-md);
+  margin-bottom: var(--space-lg);
+}
+
+.conflict-option {
+  padding: var(--space-md);
+  background: var(--bg-secondary);
+  border-radius: 12px;
+  text-align: center;
+}
+
+.conflict-option strong {
+  display: block;
+  font-size: 0.9rem;
+  margin-bottom: var(--space-xs);
+}
+
+.conflict-option span {
+  display: block;
+  font-size: 0.8rem;
+  color: var(--text-secondary);
+}
+
+.conflict-actions {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-sm);
+}
+
+.conflict-btn {
+  padding: var(--space-md);
+  border-radius: 12px;
+  font-weight: 500;
+  text-align: left;
+  transition: all var(--transition-fast);
+}
+
+.conflict-btn:active {
+  transform: scale(0.98);
+}
+
+.conflict-btn-hint {
+  display: block;
+  font-size: 0.8rem;
+  font-weight: 400;
+  opacity: 0.8;
+  margin-top: 2px;
+}
+
+.conflict-btn.keep-local {
+  background: var(--accent-primary);
+  color: white;
+}
+
+.conflict-btn.use-cloud {
+  background: #4285f4;
+  color: white;
+}
+
+.conflict-btn.merge {
+  background: var(--accent-secondary);
+  color: white;
+}
+
+.conflict-btn.cancel {
+  background: var(--bg-secondary);
+  color: var(--text-secondary);
+}

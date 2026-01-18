@@ -5,7 +5,12 @@ import { QuickEntry } from "./components/QuickEntry";
 import { Chart } from "./components/Chart";
 import { History } from "./components/History";
 import { Settings } from "./components/Settings";
+import { ConflictDialog } from "./components/ConflictDialog";
+import { useAutoSync } from "./hooks/useAutoSync";
+import { useGoogleAuth } from "./google/GoogleAuthContext";
+import { performSync } from "./google/syncService";
 import type { Settings as SettingsType } from "./types";
+import type { SyncResult, ConflictResolution } from "./google/types";
 import "./index.css";
 
 type View = "home" | "history" | "settings";
@@ -13,12 +18,26 @@ type View = "home" | "history" | "settings";
 function App() {
   const [view, setView] = useState<View>("home");
   const [dbReady, setDbReady] = useState(false);
+  const [conflictResult, setConflictResult] = useState<SyncResult | null>(null);
+
+  const { getValidAccessToken } = useGoogleAuth();
 
   const stats = useLiveQuery(() => db.stats.orderBy("order").toArray());
   const entries = useLiveQuery(() =>
     db.entries.orderBy("createdAt").reverse().toArray(),
   );
   const settingsData = useLiveQuery(() => db.settings.toCollection().first());
+
+  // Auto-sync with conflict callback
+  useAutoSync((result) => setConflictResult(result));
+
+  const handleConflictResolution = async (resolution: ConflictResolution) => {
+    setConflictResult(null);
+    const token = await getValidAccessToken();
+    if (token) {
+      await performSync(token, resolution);
+    }
+  };
 
   useEffect(() => {
     initializeDatabase().then(() => setDbReady(true));
@@ -82,6 +101,16 @@ function App() {
           <span className="nav-label">settings</span>
         </button>
       </nav>
+
+      {conflictResult && (
+        <ConflictDialog
+          cloudDate={conflictResult.cloudBackup?.metadata.exportedAt}
+          localEntryCount={conflictResult.localBackup?.metadata.entryCount}
+          cloudEntryCount={conflictResult.cloudBackup?.metadata.entryCount}
+          onResolve={handleConflictResolution}
+          onCancel={() => setConflictResult(null)}
+        />
+      )}
     </div>
   );
 }
