@@ -157,10 +157,7 @@ input:focus, button:focus {
    Header
    ============================================ */
 .header {
-  position: sticky;
-  top: 0;
-  z-index: 10;
-  padding: calc(var(--safe-top) + var(--space-md)) var(--space-lg) var(--space-md);
+  padding: max(var(--safe-top), var(--space-sm)) var(--space-md) var(--space-sm);
   background: var(--bg-primary);
 }
 
@@ -1037,7 +1034,7 @@ input:focus, button:focus {
   display: flex;
   justify-content: center;
   gap: var(--space-xs);
-  padding: var(--space-md) var(--space-lg) calc(var(--space-md) + var(--safe-bottom));
+  padding: var(--space-md) var(--space-lg) max(var(--safe-bottom), var(--space-md));
   background: var(--bg-primary);
   border-top: 1px solid var(--border-light);
 }
