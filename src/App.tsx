@@ -66,7 +66,7 @@ function App() {
       <main className="main">
         {view === "home" && (
           <div className="home-view">
-            <QuickEntry stats={stats} />
+            <QuickEntry stats={stats} settings={settings} />
             <Chart
               stats={stats}
               entries={entries}

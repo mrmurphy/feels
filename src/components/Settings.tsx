@@ -1,5 +1,5 @@
 import { useState, useRef } from 'react';
-import { db, getNextColor, exportData, importData, DEFAULT_COLORS, updateSettings } from '../db';
+import { db, getNextColor, exportData, importData, DEFAULT_COLORS, DEFAULT_SETTINGS, updateSettings } from '../db';
 import { GoogleSyncSection } from './GoogleSyncSection';
 import type { Stat, Settings as SettingsType } from '../types';
 
@@ -17,6 +17,9 @@ export function Settings({ stats, settings }: SettingsProps) {
   const [exportedData, setExportedData] = useState('');
   const [importError, setImportError] = useState('');
   const [daysToShow, setDaysToShow] = useState(settings.daysToShow);
+  const [badgeRefillMinutes, setBadgeRefillMinutes] = useState(
+    settings.badgeRefillMinutes ?? DEFAULT_SETTINGS.badgeRefillMinutes
+  );
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const handleAddStat = async () => {
@@ -60,6 +63,11 @@ export function Settings({ stats, settings }: SettingsProps) {
   const handleDaysChange = async (value: number) => {
     setDaysToShow(value);
     await updateSettings({ daysToShow: value });
+  };
+
+  const handleBadgeRefillChange = async (value: number) => {
+    setBadgeRefillMinutes(value);
+    await updateSettings({ badgeRefillMinutes: value });
   };
 
   const handleExport = async () => {
@@ -196,6 +204,22 @@ export function Settings({ stats, settings }: SettingsProps) {
               className="setting-slider"
             />
             <span className="setting-value">{daysToShow}</span>
+          </div>
+        </div>
+
+        <div className="setting-row">
+          <label className="setting-label">badge refill time</label>
+          <div className="setting-control">
+            <input
+              type="range"
+              min="5"
+              max="480"
+              step="5"
+              value={badgeRefillMinutes}
+              onChange={(e) => handleBadgeRefillChange(Number(e.target.value))}
+              className="setting-slider"
+            />
+            <span className="setting-value">{badgeRefillMinutes} min</span>
           </div>
         </div>
       </section>

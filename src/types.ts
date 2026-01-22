@@ -20,6 +20,7 @@ export interface Settings {
   id?: number;
   lastStatId?: number;
   daysToShow: number;
+  badgeRefillMinutes?: number; // Minutes until badge ring is fully filled (default: 120)
   createdAt: Date;
   updatedAt: Date;
   // Sync fields

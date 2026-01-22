@@ -1,17 +1,43 @@
-import { useState, useRef, useEffect } from 'react';
-import { db, getTodayDateString } from '../db';
-import type { Stat } from '../types';
+import { useState, useRef, useEffect, useMemo } from 'react';
+import { useLiveQuery } from 'dexie-react-hooks';
+import { db, getTodayDateString, DEFAULT_SETTINGS } from '../db';
+import type { Stat, Settings } from '../types';
 
 interface QuickEntryProps {
   stats: Stat[];
+  settings: Settings;
 }
 
-export function QuickEntry({ stats }: QuickEntryProps) {
+export function QuickEntry({ stats, settings }: QuickEntryProps) {
   const [selectedStatId, setSelectedStatId] = useState<number | null>(null);
   const [value, setValue] = useState(5);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [showSuccess, setShowSuccess] = useState(false);
+  const [now, setNow] = useState(Date.now());
   const sliderRef = useRef<HTMLInputElement>(null);
+
+  // Query today's entries for count badges
+  const todayEntries = useLiveQuery(
+    () => db.entries.where('date').equals(getTodayDateString()).toArray(),
+    []
+  );
+
+  // Compute count and most recent entry time per stat
+  const statData = useMemo(() => {
+    const map = new Map<number, { count: number; lastEntryTime: Date }>();
+    todayEntries?.forEach((entry) => {
+      const existing = map.get(entry.statId);
+      if (!existing) {
+        map.set(entry.statId, { count: 1, lastEntryTime: entry.createdAt });
+      } else {
+        existing.count++;
+        if (entry.createdAt > existing.lastEntryTime) {
+          existing.lastEntryTime = entry.createdAt;
+        }
+      }
+    });
+    return map;
+  }, [todayEntries]);
 
   // Auto-select first stat if none selected
   useEffect(() => {
@@ -19,6 +45,14 @@ export function QuickEntry({ stats }: QuickEntryProps) {
       setSelectedStatId(stats[0].id!);
     }
   }, [stats, selectedStatId]);
+
+  // Update time periodically to refresh progress rings
+  useEffect(() => {
+    const interval = setInterval(() => {
+      setNow(Date.now());
+    }, 1000); // Update every second
+    return () => clearInterval(interval);
+  }, []);
 
   const selectedStat = stats.find((s) => s.id === selectedStatId);
 
@@ -52,18 +86,40 @@ export function QuickEntry({ stats }: QuickEntryProps) {
   return (
     <div className="quick-entry">
       <div className="stat-selector">
-        {stats.map((stat) => (
-          <button
-            key={stat.id}
-            className={`stat-chip ${selectedStatId === stat.id ? 'selected' : ''}`}
-            style={{
-              '--stat-color': stat.color,
-            } as React.CSSProperties}
-            onClick={() => setSelectedStatId(stat.id!)}
-          >
-            {stat.name}
-          </button>
-        ))}
+        {stats.map((stat) => {
+          const data = statData.get(stat.id!);
+          const count = data?.count ?? 0;
+          const lastEntryTime = data?.lastEntryTime;
+
+          // Calculate progress (0-1) based on time since last entry
+          const refillMs = (settings.badgeRefillMinutes ?? DEFAULT_SETTINGS.badgeRefillMinutes) * 60 * 1000;
+          const elapsed = lastEntryTime ? now - lastEntryTime.getTime() : refillMs;
+          const progress = Math.min(elapsed / refillMs, 1);
+
+          return (
+            <button
+              key={stat.id}
+              className={`stat-chip ${selectedStatId === stat.id ? 'selected' : ''}`}
+              style={{
+                '--stat-color': stat.color,
+              } as React.CSSProperties}
+              onClick={() => setSelectedStatId(stat.id!)}
+            >
+              {stat.name}
+              {count > 0 && (
+                <span className="stat-count-badge">
+                  <span
+                    className="stat-count-ring"
+                    style={{
+                      background: `conic-gradient(currentColor 0% ${progress * 100}%, transparent ${progress * 100}% 100%)`,
+                    }}
+                  />
+                  <span className="stat-count-number">{count}</span>
+                </span>
+              )}
+            </button>
+          );
+        })}
       </div>
 
       <div className="value-input">

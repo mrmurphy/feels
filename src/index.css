@@ -236,6 +236,31 @@ input:focus, button:focus {
   transform: scale(0.96);
 }
 
+.stat-count-badge {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 20px;
+  height: 20px;
+  margin-left: 6px;
+  flex-shrink: 0;
+}
+
+.stat-count-ring {
+  position: absolute;
+  inset: 0;
+  border-radius: 50%;
+  opacity: 0.5;
+}
+
+.stat-count-number {
+  position: relative;
+  font-size: 0.8rem;
+  font-weight: 600;
+  color: inherit;
+}
+
 .value-input {
   display: flex;
   flex-direction: column;
