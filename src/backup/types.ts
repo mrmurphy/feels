@@ -1,12 +1,5 @@
 import type { Stat, Entry } from '../types';
 
-export interface GoogleAuthState {
-  accessToken: string | null;
-  expiresAt: number | null;
-  userEmail: string | null;
-  userPicture: string | null;
-}
-
 export interface BackupMetadata {
   version: 1;
   exportedAt: string;
@@ -22,13 +15,6 @@ export interface BackupFile {
     stats: Stat[];
     entries: Entry[];
   };
-}
-
-export interface SyncState {
-  lastSyncTime: string | null;
-  lastSyncChecksum: string | null;
-  driveFileId: string | null;
-  syncEnabled: boolean;
 }
 
 export type ConflictResolution = 'keep-local' | 'use-cloud' | 'merge';

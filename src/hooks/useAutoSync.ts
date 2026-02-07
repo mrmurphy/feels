@@ -1,36 +1,40 @@
 import { useEffect, useRef, useCallback } from 'react';
 import { useLiveQuery } from 'dexie-react-hooks';
 import { db, getSettings } from '../db';
-import { useGoogleAuth } from '../google/GoogleAuthContext';
-import { performSync } from '../google/syncService';
-import type { SyncResult } from '../google/types';
+import { checkSession } from '../backup/api';
+import { performSync } from '../backup/backupService';
+import type { SyncResult } from '../backup/types';
 
 const DEBOUNCE_MS = 5000;
 
 export function useAutoSync(onConflict?: (result: SyncResult) => void) {
-  const { isAuthenticated, getValidAccessToken } = useGoogleAuth();
   const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const lastFingerprintRef = useRef<string | null>(null);
+  const isAuthenticatedRef = useRef<boolean>(false);
 
   const stats = useLiveQuery(() => db.stats.toArray());
   const entries = useLiveQuery(() => db.entries.toArray());
 
   const triggerSync = useCallback(async () => {
     if (!navigator.onLine) return;
-    if (!isAuthenticated) return;
+
+    try {
+      const ok = await checkSession();
+      isAuthenticatedRef.current = ok;
+      if (!ok) return;
+    } catch {
+      return;
+    }
 
     const settings = await getSettings();
     if (!settings.syncEnabled) return;
 
-    const token = await getValidAccessToken();
-    if (!token) return;
-
-    const result = await performSync(token);
+    const result = await performSync();
 
     if (result.status === 'conflict' && onConflict) {
       onConflict(result);
     }
-  }, [isAuthenticated, getValidAccessToken, onConflict]);
+  }, [onConflict]);
 
   useEffect(() => {
     if (!stats || !entries) return;
@@ -55,7 +59,6 @@ export function useAutoSync(onConflict?: (result: SyncResult) => void) {
     };
   }, [stats, entries, triggerSync]);
 
-  // Sync on reconnect
   useEffect(() => {
     const handleOnline = () => triggerSync();
     window.addEventListener('online', handleOnline);

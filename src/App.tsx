@@ -7,10 +7,9 @@ import { History } from "./components/History";
 import { Settings } from "./components/Settings";
 import { ConflictDialog } from "./components/ConflictDialog";
 import { useAutoSync } from "./hooks/useAutoSync";
-import { useGoogleAuth } from "./google/GoogleAuthContext";
-import { performSync } from "./google/syncService";
+import { performSync } from "./backup/backupService";
 import type { Settings as SettingsType } from "./types";
-import type { SyncResult, ConflictResolution } from "./google/types";
+import type { SyncResult, ConflictResolution } from "./backup/types";
 import "./index.css";
 
 type View = "home" | "history" | "settings";
@@ -20,23 +19,17 @@ function App() {
   const [dbReady, setDbReady] = useState(false);
   const [conflictResult, setConflictResult] = useState<SyncResult | null>(null);
 
-  const { getValidAccessToken } = useGoogleAuth();
-
   const stats = useLiveQuery(() => db.stats.orderBy("order").toArray());
   const entries = useLiveQuery(() =>
     db.entries.orderBy("createdAt").reverse().toArray(),
   );
   const settingsData = useLiveQuery(() => db.settings.toCollection().first());
 
-  // Auto-sync with conflict callback
   useAutoSync((result) => setConflictResult(result));
 
   const handleConflictResolution = async (resolution: ConflictResolution) => {
     setConflictResult(null);
-    const token = await getValidAccessToken();
-    if (token) {
-      await performSync(token, resolution);
-    }
+    await performSync(resolution);
   };
 
   useEffect(() => {

@@ -1,4 +1,4 @@
-import type { ConflictResolution } from '../google/types';
+import type { ConflictResolution } from '../backup/types';
 
 interface ConflictDialogProps {
   cloudDate?: string;
@@ -30,7 +30,7 @@ export function ConflictDialog({
             <span>{localEntryCount} entries</span>
           </div>
           <div className="conflict-option cloud">
-            <strong>google drive</strong>
+            <strong>cloud backup</strong>
             <span>{cloudEntryCount} entries</span>
             {cloudDate && (
               <span>backed up: {new Date(cloudDate).toLocaleDateString()}</span>

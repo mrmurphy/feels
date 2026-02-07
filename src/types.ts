@@ -23,11 +23,10 @@ export interface Settings {
   badgeRefillMinutes?: number; // Minutes until badge ring is fully filled (default: 120)
   createdAt: Date;
   updatedAt: Date;
-  // Sync fields
+  // Backup sync fields
   syncEnabled?: boolean;
   lastSyncTime?: string | null;
   lastSyncChecksum?: string | null;
-  driveFileId?: string | null;
 }
 
 // For chart data

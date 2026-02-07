@@ -1098,7 +1098,7 @@ input:focus, button:focus {
 }
 
 /* ============================================
-   Google Sync Section
+   Backup Section
    ============================================ */
 .sync-signin {
   display: flex;
@@ -1111,24 +1111,42 @@ input:focus, button:focus {
   color: var(--text-secondary);
 }
 
-.google-signin-btn {
+.backup-auth-form {
   display: flex;
-  align-items: center;
-  justify-content: center;
+  flex-direction: column;
   gap: var(--space-sm);
+}
+
+.backup-username-input {
   padding: var(--space-md);
-  background: #4285f4;
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  font-size: 1rem;
+  background: var(--bg-card);
+  color: var(--text-primary);
+}
+
+.backup-auth-buttons {
+  display: flex;
+  gap: var(--space-sm);
+}
+
+.sync-signin-btn {
+  flex: 1;
+  padding: var(--space-md);
+  background: var(--accent-primary);
   color: white;
+  border: none;
   border-radius: 12px;
   font-weight: 500;
   transition: all var(--transition-fast);
 }
 
-.google-signin-btn:hover {
-  background: #357abd;
+.sync-signin-btn:hover:not(:disabled) {
+  filter: brightness(1.05);
 }
 
-.google-signin-btn:disabled {
+.sync-signin-btn:disabled {
   opacity: 0.6;
 }
 

@@ -1,10 +1,6 @@
 import { db, importData, getSettings, updateSettings } from '../db';
-import { findBackupFile, uploadBackup, downloadBackup } from './driveApi';
-import type {
-  BackupFile,
-  ConflictResolution,
-  SyncResult,
-} from './types';
+import { getBackup, putBackup } from './api';
+import type { BackupFile, ConflictResolution, SyncResult } from './types';
 import type { Stat, Entry } from '../types';
 
 function generateChecksum(data: { stats: Stat[]; entries: Entry[] }): string {
@@ -29,7 +25,7 @@ function generateChecksum(data: { stats: Stat[]; entries: Entry[] }): string {
   return Math.abs(hash).toString(16);
 }
 
-async function buildBackupFile(): Promise<BackupFile> {
+export async function buildBackupFile(): Promise<BackupFile> {
   const stats = await db.stats.toArray();
   const entries = await db.entries.toArray();
 
@@ -86,20 +82,18 @@ function mergeData(local: BackupFile, cloud: BackupFile): BackupFile {
 }
 
 async function resolveConflict(
-  accessToken: string,
-  fileId: string,
   localBackup: BackupFile,
   cloudBackup: BackupFile,
   resolution: ConflictResolution
 ): Promise<SyncResult> {
   switch (resolution) {
     case 'keep-local':
-      await uploadBackup(accessToken, localBackup, fileId);
+      await putBackup(localBackup);
       await updateSettings({
         lastSyncTime: new Date().toISOString(),
         lastSyncChecksum: localBackup.metadata.checksum,
       });
-      return { status: 'success', message: 'Local data uploaded to cloud' };
+      return { status: 'success', message: 'Backup updated in cloud' };
 
     case 'use-cloud':
       await importData(
@@ -113,7 +107,7 @@ async function resolveConflict(
         lastSyncTime: new Date().toISOString(),
         lastSyncChecksum: cloudBackup.metadata.checksum,
       });
-      return { status: 'success', message: 'Cloud data restored to device' };
+      return { status: 'success', message: 'Restored from cloud backup' };
 
     case 'merge': {
       const merged = mergeData(localBackup, cloudBackup);
@@ -125,7 +119,7 @@ async function resolveConflict(
         })
       );
       const newBackup = await buildBackupFile();
-      await uploadBackup(accessToken, newBackup, fileId);
+      await putBackup(newBackup);
       await updateSettings({
         lastSyncTime: new Date().toISOString(),
         lastSyncChecksum: newBackup.metadata.checksum,
@@ -136,48 +130,50 @@ async function resolveConflict(
 }
 
 export async function performSync(
-  accessToken: string,
   conflictResolution?: ConflictResolution
 ): Promise<SyncResult> {
   try {
     const settings = await getSettings();
     const localBackup = await buildBackupFile();
-    const existingFile = await findBackupFile(accessToken);
+    const cloudRaw = await getBackup();
 
-    // No cloud backup exists - just upload
-    if (!existingFile) {
-      const fileId = await uploadBackup(accessToken, localBackup);
+    if (!cloudRaw || typeof cloudRaw !== 'object') {
+      await putBackup(localBackup);
       await updateSettings({
-        driveFileId: fileId,
         lastSyncTime: new Date().toISOString(),
         lastSyncChecksum: localBackup.metadata.checksum,
       });
-      return { status: 'success', message: 'Backup created in Google Drive' };
+      return { status: 'success', message: 'Backup created in cloud' };
     }
 
-    // Cloud backup exists - check for conflicts
-    const cloudBackup = await downloadBackup(accessToken, existingFile.id);
-
-    // Same checksum - no changes needed
-    if (cloudBackup.metadata.checksum === localBackup.metadata.checksum) {
+    const cloudBackup = cloudRaw as BackupFile;
+    if (
+      !cloudBackup.metadata?.checksum ||
+      !cloudBackup.data?.stats ||
+      !cloudBackup.data?.entries
+    ) {
+      await putBackup(localBackup);
       await updateSettings({
-        driveFileId: existingFile.id,
         lastSyncTime: new Date().toISOString(),
+        lastSyncChecksum: localBackup.metadata.checksum,
       });
+      return { status: 'success', message: 'Backup created in cloud' };
+    }
+
+    if (cloudBackup.metadata.checksum === localBackup.metadata.checksum) {
+      await updateSettings({ lastSyncTime: new Date().toISOString() });
       return { status: 'no-changes', message: 'Data is already in sync' };
     }
 
-    // Check if only local changed (cloud matches last sync)
     if (settings.lastSyncChecksum === cloudBackup.metadata.checksum) {
-      await uploadBackup(accessToken, localBackup, existingFile.id);
+      await putBackup(localBackup);
       await updateSettings({
         lastSyncTime: new Date().toISOString(),
         lastSyncChecksum: localBackup.metadata.checksum,
       });
-      return { status: 'success', message: 'Backup updated in Google Drive' };
+      return { status: 'success', message: 'Backup updated in cloud' };
     }
 
-    // Both local and cloud changed - conflict!
     if (!conflictResolution) {
       return {
         status: 'conflict',
@@ -187,13 +183,7 @@ export async function performSync(
       };
     }
 
-    return await resolveConflict(
-      accessToken,
-      existingFile.id,
-      localBackup,
-      cloudBackup,
-      conflictResolution
-    );
+    return resolveConflict(localBackup, cloudBackup, conflictResolution);
   } catch (error) {
     return {
       status: 'error',
