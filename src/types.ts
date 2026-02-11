@@ -26,7 +26,7 @@ export interface Settings {
   // Backup sync fields
   syncEnabled?: boolean;
   lastSyncTime?: string | null;
-  lastSyncChecksum?: string | null;
+  lastSyncCursor?: number | null;
 }
 
 // For chart data

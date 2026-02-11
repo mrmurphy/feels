@@ -6,7 +6,7 @@ export interface BackupMetadata {
   appVersion: string;
   entryCount: number;
   statCount: number;
-  checksum: string;
+  cursor: number;
 }
 
 export interface BackupFile {

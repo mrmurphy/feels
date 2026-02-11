@@ -30,6 +30,26 @@ function fetchApi(path: string, options: ApiOptions = {}): Promise<Response> {
   });
 }
 
+/** Like fetchApi but with keepalive: true so the request may complete after page unload. */
+function fetchApiKeepalive(path: string, options: ApiOptions = {}): Promise<Response> {
+  const { body, ...rest } = options;
+  const headers: Record<string, string> = {
+    ...(rest.headers as Record<string, string>),
+  };
+  let initBody: BodyInit | undefined;
+  if (body !== undefined && body !== null) {
+    headers['Content-Type'] = 'application/json';
+    initBody = JSON.stringify(body);
+  }
+  return fetch(`${BASE_URL}${path}`, {
+    ...rest,
+    credentials: 'include',
+    headers,
+    body: initBody,
+    keepalive: true,
+  });
+}
+
 // --- Auth (Passkeys) ---
 
 export async function getRegisterOptions(username: string): Promise<unknown> {
@@ -108,8 +128,12 @@ export async function getBackup(): Promise<unknown | null> {
   return res.json();
 }
 
-export async function putBackup(data: unknown): Promise<void> {
-  const res = await fetchApi(`/${APP_NAME}/${BACKUP_NAME}`, {
+export async function putBackup(
+  data: unknown,
+  options?: { keepalive?: boolean }
+): Promise<void> {
+  const fetchFn = options?.keepalive ? fetchApiKeepalive : fetchApi;
+  const res = await fetchFn(`/${APP_NAME}/${BACKUP_NAME}`, {
     method: 'PUT',
     body: data,
   });

@@ -3,29 +3,65 @@ import { getBackup, putBackup } from './api';
 import type { BackupFile, ConflictResolution, SyncResult } from './types';
 import type { Stat, Entry } from '../types';
 
-function generateChecksum(data: { stats: Stat[]; entries: Entry[] }): string {
-  const str = JSON.stringify({
-    stats: data.stats.map((s) => ({
-      id: s.id,
-      name: s.name,
-      updatedAt: s.updatedAt,
-    })),
-    entries: data.entries.map((e) => ({
-      id: e.id,
-      value: e.value,
-      updatedAt: e.updatedAt,
-    })),
-  });
-  let hash = 0;
-  for (let i = 0; i < str.length; i++) {
-    const char = str.charCodeAt(i);
-    hash = (hash << 5) - hash + char;
-    hash = hash & hash;
-  }
-  return Math.abs(hash).toString(16);
+function toIsoString(value: unknown): string {
+  const date = new Date(value as string | number | Date);
+  return Number.isNaN(date.getTime()) ? '' : date.toISOString();
 }
 
-export async function buildBackupFile(): Promise<BackupFile> {
+function normalizeStats(stats: Stat[]) {
+  return [...stats]
+    .sort((a, b) => (a.id ?? 0) - (b.id ?? 0))
+    .map((s) => ({
+      id: s.id ?? null,
+      name: s.name,
+      color: s.color,
+      order: s.order,
+      createdAt: toIsoString(s.createdAt),
+      updatedAt: toIsoString(s.updatedAt),
+    }));
+}
+
+function normalizeEntries(entries: Entry[]) {
+  return [...entries]
+    .sort((a, b) => (a.id ?? 0) - (b.id ?? 0))
+    .map((e) => ({
+      id: e.id ?? null,
+      statId: e.statId,
+      value: e.value,
+      date: e.date,
+      createdAt: toIsoString(e.createdAt),
+      updatedAt: toIsoString(e.updatedAt),
+    }));
+}
+
+function hasSameData(localBackup: BackupFile, cloudBackup: BackupFile): boolean {
+  const localComparable = {
+    stats: normalizeStats(localBackup.data.stats),
+    entries: normalizeEntries(localBackup.data.entries),
+  };
+  const cloudComparable = {
+    stats: normalizeStats(cloudBackup.data.stats),
+    entries: normalizeEntries(cloudBackup.data.entries),
+  };
+  return JSON.stringify(localComparable) === JSON.stringify(cloudComparable);
+}
+
+function hasCloudCursor(backup: BackupFile): boolean {
+  return Number.isFinite((backup.metadata as { cursor?: unknown }).cursor);
+}
+
+function getCloudCursor(backup: BackupFile): number {
+  if (!hasCloudCursor(backup)) return 0;
+  return (backup.metadata as { cursor: number }).cursor;
+}
+
+function isValidBackupFile(raw: unknown): raw is BackupFile {
+  if (!raw || typeof raw !== 'object') return false;
+  const backup = raw as BackupFile;
+  return Boolean(backup.metadata && backup.data?.stats && backup.data?.entries);
+}
+
+export async function buildBackupFile(cursor = 0): Promise<BackupFile> {
   const stats = await db.stats.toArray();
   const entries = await db.entries.toArray();
 
@@ -36,13 +72,13 @@ export async function buildBackupFile(): Promise<BackupFile> {
       appVersion: '1.0.0',
       entryCount: entries.length,
       statCount: stats.length,
-      checksum: generateChecksum({ stats, entries }),
+      cursor,
     },
     data: { stats, entries },
   };
 }
 
-function mergeData(local: BackupFile, cloud: BackupFile): BackupFile {
+function mergeData(local: BackupFile, cloud: BackupFile): { stats: Stat[]; entries: Entry[] } {
   const mergedStats = new Map<number, Stat>();
   const mergedEntries = new Map<number, Entry>();
 
@@ -68,32 +104,27 @@ function mergeData(local: BackupFile, cloud: BackupFile): BackupFile {
   const stats = Array.from(mergedStats.values());
   const entries = Array.from(mergedEntries.values());
 
-  return {
-    metadata: {
-      version: 1,
-      exportedAt: new Date().toISOString(),
-      appVersion: '1.0.0',
-      entryCount: entries.length,
-      statCount: stats.length,
-      checksum: generateChecksum({ stats, entries }),
-    },
-    data: { stats, entries },
-  };
+  return { stats, entries };
 }
 
 async function resolveConflict(
   localBackup: BackupFile,
   cloudBackup: BackupFile,
-  resolution: ConflictResolution
+  resolution: ConflictResolution,
+  cloudCursor: number,
+  keepalive?: boolean
 ): Promise<SyncResult> {
+  const putOptions = keepalive ? { keepalive: true } : undefined;
   switch (resolution) {
-    case 'keep-local':
-      await putBackup(localBackup);
+    case 'keep-local': {
+      const backupToPush = await buildBackupFile(cloudCursor + 1);
+      await putBackup(backupToPush, putOptions);
       await updateSettings({
         lastSyncTime: new Date().toISOString(),
-        lastSyncChecksum: localBackup.metadata.checksum,
+        lastSyncCursor: backupToPush.metadata.cursor,
       });
       return { status: 'success', message: 'Backup updated in cloud' };
+    }
 
     case 'use-cloud':
       await importData(
@@ -105,7 +136,7 @@ async function resolveConflict(
       );
       await updateSettings({
         lastSyncTime: new Date().toISOString(),
-        lastSyncChecksum: cloudBackup.metadata.checksum,
+        lastSyncCursor: cloudCursor,
       });
       return { status: 'success', message: 'Restored from cloud backup' };
 
@@ -113,16 +144,16 @@ async function resolveConflict(
       const merged = mergeData(localBackup, cloudBackup);
       await importData(
         JSON.stringify({
-          stats: merged.data.stats,
-          entries: merged.data.entries,
+          stats: merged.stats,
+          entries: merged.entries,
           exportedAt: new Date().toISOString(),
         })
       );
-      const newBackup = await buildBackupFile();
-      await putBackup(newBackup);
+      const newBackup = await buildBackupFile(cloudCursor + 1);
+      await putBackup(newBackup, putOptions);
       await updateSettings({
         lastSyncTime: new Date().toISOString(),
-        lastSyncChecksum: newBackup.metadata.checksum,
+        lastSyncCursor: newBackup.metadata.cursor,
       });
       return { status: 'success', message: 'Data merged successfully' };
     }
@@ -130,46 +161,67 @@ async function resolveConflict(
 }
 
 export async function performSync(
-  conflictResolution?: ConflictResolution
+  conflictResolution?: ConflictResolution,
+  options?: { keepalive?: boolean }
 ): Promise<SyncResult> {
+  const putOptions = options?.keepalive ? { keepalive: true } : undefined;
   try {
     const settings = await getSettings();
     const localBackup = await buildBackupFile();
     const cloudRaw = await getBackup();
 
-    if (!cloudRaw || typeof cloudRaw !== 'object') {
-      await putBackup(localBackup);
+    if (!cloudRaw) {
+      const initialCursor = Math.max(settings.lastSyncCursor ?? 0, 0) + 1;
+      const firstBackup = await buildBackupFile(initialCursor);
+      await putBackup(firstBackup, putOptions);
       await updateSettings({
         lastSyncTime: new Date().toISOString(),
-        lastSyncChecksum: localBackup.metadata.checksum,
+        lastSyncCursor: firstBackup.metadata.cursor,
       });
       return { status: 'success', message: 'Backup created in cloud' };
     }
 
-    const cloudBackup = cloudRaw as BackupFile;
-    if (
-      !cloudBackup.metadata?.checksum ||
-      !cloudBackup.data?.stats ||
-      !cloudBackup.data?.entries
-    ) {
-      await putBackup(localBackup);
+    if (!isValidBackupFile(cloudRaw)) {
+      const initialCursor = Math.max(settings.lastSyncCursor ?? 0, 0) + 1;
+      const firstBackup = await buildBackupFile(initialCursor);
+      await putBackup(firstBackup, putOptions);
       await updateSettings({
         lastSyncTime: new Date().toISOString(),
-        lastSyncChecksum: localBackup.metadata.checksum,
+        lastSyncCursor: firstBackup.metadata.cursor,
       });
       return { status: 'success', message: 'Backup created in cloud' };
     }
 
-    if (cloudBackup.metadata.checksum === localBackup.metadata.checksum) {
-      await updateSettings({ lastSyncTime: new Date().toISOString() });
+    const cloudBackup = cloudRaw;
+    const cloudCursor = getCloudCursor(cloudBackup);
+    const lastSyncCursor = settings.lastSyncCursor ?? 0;
+
+    if (hasSameData(localBackup, cloudBackup)) {
+      await updateSettings({
+        lastSyncTime: new Date().toISOString(),
+        lastSyncCursor: cloudCursor,
+      });
       return { status: 'no-changes', message: 'Data is already in sync' };
     }
 
-    if (settings.lastSyncChecksum === cloudBackup.metadata.checksum) {
-      await putBackup(localBackup);
+    if (!hasCloudCursor(cloudBackup)) {
+      if (!conflictResolution) {
+        return {
+          status: 'conflict',
+          message: 'Cloud backup format is outdated. Choose how to resolve.',
+          cloudBackup,
+          localBackup,
+        };
+      }
+      return resolveConflict(localBackup, cloudBackup, conflictResolution, 0);
+    }
+
+    if (lastSyncCursor === cloudCursor) {
+      const nextBackup = await buildBackupFile(cloudCursor + 1);
+      await putBackup(nextBackup, putOptions);
       await updateSettings({
         lastSyncTime: new Date().toISOString(),
-        lastSyncChecksum: localBackup.metadata.checksum,
+        lastSyncCursor: nextBackup.metadata.cursor,
       });
       return { status: 'success', message: 'Backup updated in cloud' };
     }
@@ -183,7 +235,7 @@ export async function performSync(
       };
     }
 
-    return resolveConflict(localBackup, cloudBackup, conflictResolution);
+    return resolveConflict(localBackup, cloudBackup, conflictResolution, cloudCursor, options?.keepalive);
   } catch (error) {
     return {
       status: 'error',

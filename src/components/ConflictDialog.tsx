@@ -16,61 +16,58 @@ export function ConflictDialog({
   onCancel,
 }: ConflictDialogProps) {
   return (
-    <div className="conflict-modal">
+    <div className="conflict-modal" role="dialog" aria-modal="true" aria-labelledby="conflict-title" aria-describedby="conflict-desc">
       <div className="conflict-content">
-        <h3 className="conflict-title">sync conflict</h3>
-        <p className="conflict-description">
-          Your local data and cloud backup have both changed since the last
-          sync.
+        <p className="conflict-eyebrow">backup</p>
+        <h2 id="conflict-title" className="conflict-title">Sync conflict</h2>
+        <p id="conflict-desc" className="conflict-description">
+          Your device and cloud backup have both changed. Choose how to resolve.
         </p>
 
-        <div className="conflict-comparison">
-          <div className="conflict-option local">
-            <strong>local device</strong>
-            <span>{localEntryCount} entries</span>
+        <div className="conflict-comparison" aria-hidden="true">
+          <div className="conflict-option conflict-option-local">
+            <span className="conflict-option-label">This device</span>
+            <span className="conflict-option-count">{localEntryCount ?? 0} entries</span>
           </div>
-          <div className="conflict-option cloud">
-            <strong>cloud backup</strong>
-            <span>{cloudEntryCount} entries</span>
+          <span className="conflict-vs" aria-hidden="true">vs</span>
+          <div className="conflict-option conflict-option-cloud">
+            <span className="conflict-option-label">Cloud backup</span>
+            <span className="conflict-option-count">{cloudEntryCount ?? 0} entries</span>
             {cloudDate && (
-              <span>backed up: {new Date(cloudDate).toLocaleDateString()}</span>
+              <span className="conflict-option-meta">
+                {new Date(cloudDate).toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' })}
+              </span>
             )}
           </div>
         </div>
 
         <div className="conflict-actions">
           <button
-            className="conflict-btn keep-local"
+            type="button"
+            className="conflict-btn conflict-btn-keep-local"
             onClick={() => onResolve('keep-local')}
           >
-            keep local
-            <span className="conflict-btn-hint">
-              overwrite cloud with your device data
-            </span>
+            <span className="conflict-btn-text">Keep this device</span>
+            <span className="conflict-btn-hint">Overwrite cloud with current data</span>
           </button>
-
           <button
-            className="conflict-btn use-cloud"
+            type="button"
+            className="conflict-btn conflict-btn-use-cloud"
             onClick={() => onResolve('use-cloud')}
           >
-            use cloud
-            <span className="conflict-btn-hint">
-              replace device data with cloud backup
-            </span>
+            <span className="conflict-btn-text">Use cloud backup</span>
+            <span className="conflict-btn-hint">Replace this device with cloud data</span>
           </button>
-
           <button
-            className="conflict-btn merge"
+            type="button"
+            className="conflict-btn conflict-btn-merge"
             onClick={() => onResolve('merge')}
           >
-            merge both
-            <span className="conflict-btn-hint">
-              combine entries, keep newest versions
-            </span>
+            <span className="conflict-btn-text">Merge both</span>
+            <span className="conflict-btn-hint">Combine and keep newest versions</span>
           </button>
-
-          <button className="conflict-btn cancel" onClick={onCancel}>
-            cancel
+          <button type="button" className="conflict-btn conflict-btn-cancel" onClick={onCancel}>
+            Cancel
           </button>
         </div>
       </div>

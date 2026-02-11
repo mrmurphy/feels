@@ -118,7 +118,7 @@ export function Settings({ stats, settings }: SettingsProps) {
             <div
               key={stat.id}
               className={`stat-item ${editingId === stat.id ? 'editing' : ''}`}
-              style={{ '--stagger': index } as React.CSSProperties}
+              style={{ '--stagger': index, '--stat-color': stat.color } as React.CSSProperties}
             >
               {editingId === stat.id ? (
                 <div className="stat-edit">
