@@ -16,6 +16,16 @@ export interface Entry {
   updatedAt: Date;
 }
 
+export interface Event {
+  id?: number;
+  name: string;
+  icon: string; // emoji
+  note?: string;
+  date: string; // YYYY-MM-DD
+  createdAt: Date;
+  updatedAt: Date;
+}
+
 export interface Settings {
   id?: number;
   lastStatId?: number;

@@ -1,10 +1,11 @@
 import Dexie, { type EntityTable } from 'dexie';
-import type { Stat, Entry, Settings } from './types';
+import type { Stat, Entry, Event, Settings } from './types';
 export type { Settings } from './types';
 
 const db = new Dexie('FeelsDB') as Dexie & {
   stats: EntityTable<Stat, 'id'>;
   entries: EntityTable<Entry, 'id'>;
+  events: EntityTable<Event, 'id'>;
   settings: EntityTable<Settings, 'id'>;
 };
 
@@ -14,8 +15,15 @@ db.version(1).stores({
   settings: '++id',
 });
 
+db.version(2).stores({
+  stats: '++id, name, order, createdAt',
+  entries: '++id, statId, date, createdAt',
+  events: '++id, date, createdAt',
+  settings: '++id',
+});
+
 // Auto-timestamp hooks
-const tables = [db.stats, db.entries, db.settings];
+const tables = [db.stats, db.entries, db.events, db.settings];
 tables.forEach((table) => {
   table.hook('creating', (_primKey, obj) => {
     obj.createdAt = new Date();
@@ -155,18 +163,19 @@ export function getTodayDateString(): string {
 export async function exportData(): Promise<string> {
   const stats = await db.stats.toArray();
   const entries = await db.entries.toArray();
-  return JSON.stringify({ stats, entries, exportedAt: new Date().toISOString() }, null, 2);
+  const events = await db.events.toArray();
+  return JSON.stringify({ stats, entries, events, exportedAt: new Date().toISOString() }, null, 2);
 }
 
 export async function importData(jsonString: string): Promise<void> {
   const data = JSON.parse(jsonString);
 
-  await db.transaction('rw', [db.stats, db.entries], async () => {
+  await db.transaction('rw', [db.stats, db.entries, db.events], async () => {
     await db.stats.clear();
     await db.entries.clear();
+    await db.events.clear();
 
     if (data.stats?.length) {
-      // Restore with original IDs
       await db.stats.bulkAdd(
         data.stats.map((s: Stat) => ({
           ...s,
@@ -181,6 +190,15 @@ export async function importData(jsonString: string): Promise<void> {
           ...e,
           createdAt: new Date(e.createdAt),
           updatedAt: new Date(e.updatedAt),
+        }))
+      );
+    }
+    if (data.events?.length) {
+      await db.events.bulkAdd(
+        data.events.map((ev: Event) => ({
+          ...ev,
+          createdAt: new Date(ev.createdAt),
+          updatedAt: new Date(ev.updatedAt),
         }))
       );
     }

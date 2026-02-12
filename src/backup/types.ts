@@ -1,4 +1,4 @@
-import type { Stat, Entry } from '../types';
+import type { Stat, Entry, Event } from '../types';
 
 export interface BackupMetadata {
   version: 1;
@@ -6,6 +6,7 @@ export interface BackupMetadata {
   appVersion: string;
   entryCount: number;
   statCount: number;
+  eventCount?: number; // optional for backward compatibility with old backups
   cursor: number;
 }
 
@@ -14,6 +15,7 @@ export interface BackupFile {
   data: {
     stats: Stat[];
     entries: Entry[];
+    events: Event[];
   };
 }
 

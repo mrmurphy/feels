@@ -23,6 +23,7 @@ function App() {
   const entries = useLiveQuery(() =>
     db.entries.orderBy("createdAt").reverse().toArray(),
   );
+  const events = useLiveQuery(() => db.events.orderBy("date").reverse().toArray());
   const settingsData = useLiveQuery(() => db.settings.toCollection().first());
 
   useAutoSync((result) => setConflictResult(result));
@@ -36,7 +37,7 @@ function App() {
     initializeDatabase().then(() => setDbReady(true));
   }, []);
 
-  if (!dbReady || !stats || !entries || settingsData === undefined) {
+  if (!dbReady || !stats || !entries || events === undefined || settingsData === undefined) {
     return (
       <div className="app loading">
         <div className="loading-text">loading...</div>
@@ -59,10 +60,11 @@ function App() {
       <main className="main">
         {view === "home" && (
           <div className="home-view">
-            <QuickEntry stats={stats} settings={settings} />
+            <QuickEntry stats={stats} settings={settings} events={events} />
             <Chart
               stats={stats}
               entries={entries}
+              events={events}
               visibleDays={settings.daysToShow}
             />
           </div>
@@ -100,6 +102,8 @@ function App() {
           cloudDate={conflictResult.cloudBackup?.metadata.exportedAt}
           localEntryCount={conflictResult.localBackup?.metadata.entryCount}
           cloudEntryCount={conflictResult.cloudBackup?.metadata.entryCount}
+          localEventCount={conflictResult.localBackup?.metadata.eventCount}
+          cloudEventCount={conflictResult.cloudBackup?.metadata.eventCount}
           onResolve={handleConflictResolution}
           onCancel={() => setConflictResult(null)}
         />

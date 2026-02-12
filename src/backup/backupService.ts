@@ -1,7 +1,7 @@
 import { db, importData, getSettings, updateSettings } from '../db';
 import { getBackup, putBackup } from './api';
 import type { BackupFile, ConflictResolution, SyncResult } from './types';
-import type { Stat, Entry } from '../types';
+import type { Stat, Entry, Event } from '../types';
 
 function toIsoString(value: unknown): string {
   const date = new Date(value as string | number | Date);
@@ -34,14 +34,36 @@ function normalizeEntries(entries: Entry[]) {
     }));
 }
 
+function normalizeEvents(events: Event[]) {
+  return [...events]
+    .sort((a, b) => (a.id ?? 0) - (b.id ?? 0))
+    .map((ev) => ({
+      id: ev.id ?? null,
+      name: ev.name,
+      icon: ev.icon,
+      note: ev.note ?? null,
+      date: ev.date,
+      createdAt: toIsoString(ev.createdAt),
+      updatedAt: toIsoString(ev.updatedAt),
+    }));
+}
+
+function getEvents(backup: BackupFile): Event[] {
+  return (backup.data as { events?: Event[] }).events ?? [];
+}
+
 function hasSameData(localBackup: BackupFile, cloudBackup: BackupFile): boolean {
+  const localEvents = getEvents(localBackup);
+  const cloudEvents = getEvents(cloudBackup);
   const localComparable = {
     stats: normalizeStats(localBackup.data.stats),
     entries: normalizeEntries(localBackup.data.entries),
+    events: normalizeEvents(localEvents),
   };
   const cloudComparable = {
     stats: normalizeStats(cloudBackup.data.stats),
     entries: normalizeEntries(cloudBackup.data.entries),
+    events: normalizeEvents(cloudEvents),
   };
   return JSON.stringify(localComparable) === JSON.stringify(cloudComparable);
 }
@@ -64,6 +86,7 @@ function isValidBackupFile(raw: unknown): raw is BackupFile {
 export async function buildBackupFile(cursor = 0): Promise<BackupFile> {
   const stats = await db.stats.toArray();
   const entries = await db.entries.toArray();
+  const events = await db.events.toArray();
 
   return {
     metadata: {
@@ -72,18 +95,21 @@ export async function buildBackupFile(cursor = 0): Promise<BackupFile> {
       appVersion: '1.0.0',
       entryCount: entries.length,
       statCount: stats.length,
+      eventCount: events.length,
       cursor,
     },
-    data: { stats, entries },
+    data: { stats, entries, events },
   };
 }
 
-function mergeData(local: BackupFile, cloud: BackupFile): { stats: Stat[]; entries: Entry[] } {
+function mergeData(local: BackupFile, cloud: BackupFile): { stats: Stat[]; entries: Entry[]; events: Event[] } {
   const mergedStats = new Map<number, Stat>();
   const mergedEntries = new Map<number, Entry>();
+  const mergedEvents = new Map<number, Event>();
 
   cloud.data.stats.forEach((s) => s.id && mergedStats.set(s.id, s));
   cloud.data.entries.forEach((e) => e.id && mergedEntries.set(e.id, e));
+  getEvents(cloud).forEach((ev) => ev.id && mergedEvents.set(ev.id, ev));
 
   local.data.stats.forEach((s) => {
     if (!s.id) return;
@@ -101,10 +127,19 @@ function mergeData(local: BackupFile, cloud: BackupFile): { stats: Stat[]; entri
     }
   });
 
-  const stats = Array.from(mergedStats.values());
-  const entries = Array.from(mergedEntries.values());
+  getEvents(local).forEach((ev) => {
+    if (!ev.id) return;
+    const existing = mergedEvents.get(ev.id);
+    if (!existing || new Date(ev.updatedAt) > new Date(existing.updatedAt)) {
+      mergedEvents.set(ev.id, ev);
+    }
+  });
 
-  return { stats, entries };
+  return {
+    stats: Array.from(mergedStats.values()),
+    entries: Array.from(mergedEntries.values()),
+    events: Array.from(mergedEvents.values()),
+  };
 }
 
 async function resolveConflict(
@@ -131,6 +166,7 @@ async function resolveConflict(
         JSON.stringify({
           stats: cloudBackup.data.stats,
           entries: cloudBackup.data.entries,
+          events: getEvents(cloudBackup),
           exportedAt: cloudBackup.metadata.exportedAt,
         })
       );
@@ -146,6 +182,7 @@ async function resolveConflict(
         JSON.stringify({
           stats: merged.stats,
           entries: merged.entries,
+          events: merged.events,
           exportedAt: new Date().toISOString(),
         })
       );

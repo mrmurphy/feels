@@ -4,6 +4,8 @@ interface ConflictDialogProps {
   cloudDate?: string;
   localEntryCount?: number;
   cloudEntryCount?: number;
+  localEventCount?: number;
+  cloudEventCount?: number;
   onResolve: (resolution: ConflictResolution) => void;
   onCancel: () => void;
 }
@@ -12,6 +14,8 @@ export function ConflictDialog({
   cloudDate,
   localEntryCount,
   cloudEntryCount,
+  localEventCount,
+  cloudEventCount,
   onResolve,
   onCancel,
 }: ConflictDialogProps) {
@@ -28,11 +32,13 @@ export function ConflictDialog({
           <div className="conflict-option conflict-option-local">
             <span className="conflict-option-label">This device</span>
             <span className="conflict-option-count">{localEntryCount ?? 0} entries</span>
+            <span className="conflict-option-count">{localEventCount ?? 0} events</span>
           </div>
           <span className="conflict-vs" aria-hidden="true">vs</span>
           <div className="conflict-option conflict-option-cloud">
             <span className="conflict-option-label">Cloud backup</span>
             <span className="conflict-option-count">{cloudEntryCount ?? 0} entries</span>
+            <span className="conflict-option-count">{cloudEventCount ?? 0} events</span>
             {cloudDate && (
               <span className="conflict-option-meta">
                 {new Date(cloudDate).toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' })}

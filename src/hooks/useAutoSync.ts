@@ -14,6 +14,7 @@ export function useAutoSync(onConflict?: (result: SyncResult) => void) {
 
   const stats = useLiveQuery(() => db.stats.toArray());
   const entries = useLiveQuery(() => db.entries.toArray());
+  const events = useLiveQuery(() => db.events.toArray());
 
   const triggerSync = useCallback(async () => {
     if (!navigator.onLine) return;
@@ -51,11 +52,11 @@ export function useAutoSync(onConflict?: (result: SyncResult) => void) {
   }, []);
 
   useEffect(() => {
-    if (!stats || !entries) return;
+    if (!stats || !entries || events === undefined) return;
 
-    const fingerprint = `${stats.length}-${entries.length}-${
+    const fingerprint = `${stats.length}-${entries.length}-${events.length}-${
       entries[0]?.updatedAt?.toISOString() || ''
-    }`;
+    }-${events[0]?.updatedAt?.toISOString() || ''}`;
 
     if (fingerprint === lastFingerprintRef.current) return;
     lastFingerprintRef.current = fingerprint;
@@ -71,7 +72,7 @@ export function useAutoSync(onConflict?: (result: SyncResult) => void) {
         clearTimeout(debounceRef.current);
       }
     };
-  }, [stats, entries, triggerSync]);
+  }, [stats, entries, events, triggerSync]);
 
   useEffect(() => {
     const handleOnline = () => triggerSync();
