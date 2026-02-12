@@ -55,7 +55,7 @@ function fetchApiKeepalive(path: string, options: ApiOptions = {}): Promise<Resp
 export async function getRegisterOptions(username: string): Promise<unknown> {
   const res = await fetchApi('/auth/register/options', {
     method: 'POST',
-    body: { username },
+    body: { appname: APP_NAME, username },
   });
   if (!res.ok) {
     const text = await res.text();
@@ -70,7 +70,7 @@ export async function verifyRegistration(
 ): Promise<void> {
   const res = await fetchApi('/auth/register/verify', {
     method: 'POST',
-    body: { username, attestation },
+    body: { appname: APP_NAME, username, attestation },
   });
   if (!res.ok) {
     const text = await res.text();
@@ -81,7 +81,7 @@ export async function verifyRegistration(
 export async function getLoginOptions(username: string): Promise<unknown> {
   const res = await fetchApi('/auth/login/options', {
     method: 'POST',
-    body: { username },
+    body: { appname: APP_NAME, username },
   });
   if (!res.ok) {
     const text = await res.text();
@@ -96,7 +96,7 @@ export async function verifyLogin(
 ): Promise<void> {
   const res = await fetchApi('/auth/login/verify', {
     method: 'POST',
-    body: { username, assertion },
+    body: { appname: APP_NAME, username, assertion },
   });
   if (!res.ok) {
     const text = await res.text();
